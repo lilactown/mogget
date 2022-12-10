@@ -10,28 +10,33 @@
   [stack]
   [(pop stack) (peek stack)])
 
-(defn ->sfn
+(defn ->fn
   "pure stack fn"
-  ([f & {:keys [arity results]
-         :or {arity 1
-              results 1}}]
-   (fn [ctx]
-     (loop [n arity
-            args ()
-            stack (:stack ctx)]
-       (if (pos? n)
-         (if (seq stack)
-           (recur
-            (dec n)
-            (conj args (peek stack))
-            (pop stack))
-           (throw (ex-info "Stack empty executing fn" {:f f :arity arity})))
-         (assoc
-          ctx :stack
-          (if (= 1 results)
-            (conj stack (apply f args))
-            ;; TODO throw exception if actual results > results
-            (into stack (apply f args)))))))))
+  [f & {:keys [arity results]
+        :or {arity 1
+             results 1}}]
+  (fn [{:keys [words] :as ctx}]
+    (loop [n arity
+           args ()
+           stack (:stack ctx)]
+      (if (pos? n)
+        (if (seq stack)
+          (recur
+           (dec n)
+           (conj args (peek stack))
+           (pop stack))
+          (throw (ex-info "Stack empty executing fn" {:f f :arity arity})))
+        (assoc
+         ctx :stack
+         (if (= 1 results)
+           (conj stack (apply f words args))
+           ;; TODO throw exception if actual results > results
+           (into stack (apply f words args))))))))
+
+
+(defn ->sfn
+  [f & {:keys [arity results] :as args}]
+  (->fn (fn [_words & args] (apply f args)) args))
 
 (declare eval-list)
 
@@ -72,14 +77,14 @@
                    coll)))))
 
    ;; combinators
-   'bi (->sfn
-        (fn [x p q]
-          [(-> {:stack [x] :words default-words :mode :eval}
+   'bi (->fn
+        (fn [words x p q]
+          [(-> {:stack [x] :words words :mode :eval}
                (eval-list p)
                (:stack)
                ;; TODO throw err if > 1 results on stack
                (first))
-           (-> {:stack [x] :words default-words :mode :eval}
+           (-> {:stack [x] :words words :mode :eval}
                (eval-list q)
                (:stack)
                (first))])
@@ -128,9 +133,10 @@
 
 (defmacro eval
   [& form]
-  `(eval-list
-    {:stack [] :words default-words :mode :eval}
-    '~form))
+  `(:stack
+    (eval-list
+     {:stack [] :words default-words :mode :eval}
+     '~form)))
 
 
 (comment
@@ -151,4 +157,7 @@
 
   ;; define
   (eval 'sq (dup *) define 2 sq)
+  (eval 'sq (dup *) define [1 2 3] (sq) map)
+  (eval 'sq (dup *) define
+        3 (sq) (sq) bi)
   )
