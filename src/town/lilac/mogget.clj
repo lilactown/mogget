@@ -10,7 +10,8 @@
   [stack]
   [(pop stack) (peek stack)])
 
-(defn ->fn
+(defn ->sfn
+  "pure stack fn"
   ([f & {:keys [arity results]
          :or {arity 1
               results 1}}]
@@ -38,23 +39,23 @@
   {'. display
 
    ;; arithmetic
-   'inc (->fn inc)
-   'dec (->fn dec)
+   'inc (->sfn inc)
+   'dec (->sfn dec)
    '+ (fn [{:keys [stack] :as ctx}]
         (let [[stack x] (-pop stack)
               [stack y] (-pop stack)]
           (assoc ctx :stack (conj stack (+ x y)))))
-   '- (->fn - :arity 2)
-   '* (->fn * :arity 2)
-   '/ (->fn / :arity 2)
+   '- (->sfn - :arity 2)
+   '* (->sfn * :arity 2)
+   '/ (->sfn / :arity 2)
 
    ;; tests
-   '< (->fn < :arity 2)
-   '> (->fn > :arity 2)
-   '= (->fn = :arity 2)
+   '< (->sfn < :arity 2)
+   '> (->sfn > :arity 2)
+   '= (->sfn = :arity 2)
 
    ;; seqs
-   'map (fn [{:keys [stack] :as ctx}]
+   'map (fn [{:keys [stack words] :as ctx}]
           (let [[stack form] (-pop stack)
                 [stack coll] (-pop stack)]
             (assoc
@@ -63,7 +64,7 @@
              (conj
               stack
               (map (fn [x]
-                     (-> {:stack [x] :words default-words :mode :eval}
+                     (-> {:stack [x] :words words :mode :eval}
                          (eval-list form)
                          ;; TODO throw err if > 1 results on stack
                          :stack
@@ -71,7 +72,7 @@
                    coll)))))
 
    ;; combinators
-   'bi (->fn
+   'bi (->sfn
         (fn [x p q]
           [(-> {:stack [x] :words default-words :mode :eval}
                (eval-list p)
@@ -85,8 +86,19 @@
         :arity 3 :results 2)
 
    ;; shuffle
-   'swap (->fn (fn [x y] [y x]) :arity 2 :results 2)
-   'dup (->fn (fn [x] [x x]) :arity 1 :results 2)})
+   'swap (->sfn (fn [x y] [y x]) :arity 2 :results 2)
+   'dup (->sfn (fn [x] [x x]) :arity 1 :results 2)
+
+   'define (fn [{:keys [stack words] :as ctx}]
+             (let [[stack form] (-pop stack)
+                   [stack quoted-sym] (-pop stack)
+                   sym (second quoted-sym)]
+               (assoc
+                ctx
+                :stack stack
+                :words (assoc words sym
+                              (fn [ctx]
+                                (eval-list ctx form))))))})
 
 (defprotocol IEval
   (-eval [x stack]))
@@ -122,17 +134,21 @@
 
 
 (comment
+  ;; arithemetic
   (eval 1 2 3 + +)
   (eval 2 1 -)
   (eval 1 inc)
 
-
+  ;; seq
   (eval [1 2 3] (inc) map)
 
-
+  ;; combinator
   (eval 1 (inc) (inc) bi *)
 
-
+  ;; shuffle
   (eval 1 2 swap)
   (eval 1 dup)
+
+  ;; define
+  (eval 'sq (dup *) define 2 sq)
   )
