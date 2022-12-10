@@ -60,6 +60,14 @@
    '= (->sfn = :arity 2)
    'even? (->sfn even?)
 
+   ;; control flow
+   'if (fn [{:keys [stack] :as ctx}]
+         (let [[stack else] (-pop stack)
+               [stack then] (-pop stack)
+               [stack cond] (-pop stack)]
+           (-> (assoc ctx :stack stack)
+               (eval-list (if cond then else)))))
+
    ;; seqs
    'first (->sfn first)
    'second (->sfn second)
@@ -93,7 +101,8 @@
                                  ;; TODO throw if > 1 result
                                  first))
                            init
-                           coll)) :arity 3)
+                           coll))
+                 :arity 3)
 
    ;; combinators
    'bi (->fn
@@ -121,6 +130,11 @@
    ;; shuffle
    'swap (->sfn (fn [x y] [y x]) :arity 2 :results 2)
    'dup (->sfn (fn [x] [x x]) :arity 1 :results 2)
+   'rm (->sfn (fn [x y] x) :arity 2 :results 1)
+   'nip (->sfn (fn [x y] y) :arity 2 :results 1)
+   'over (->sfn (fn [x y] [x y x]) :arity 2 :results 3)
+   'pick (->sfn (fn [x y z] [x y z x]) :arity 3 :results 4)
+
 
    'define (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
@@ -157,13 +171,16 @@
               (f ctx)
               (throw (ex-info "word not found" {:word sym}))))))
 
+(def prelude
+  '((doto (over (apply) dip)) define))
+
 (defn eval-list
   [ctx list]
   (reduce
     (fn [ctx x]
       (-eval x ctx))
     ctx
-    list))
+    (concat prelude list)))
 
 (defmacro eval
   [& form]
@@ -174,6 +191,11 @@
 
 ^:rct/test
 (comment
+  ;; basic data
+  (eval 1 2 3)
+
+  (eval [1] [2] [3])
+
   ;; arithemetic
   (eval 1 2 3 + +)
   ;; => [6]
@@ -200,6 +222,14 @@
   (eval 1 2 >)
   ;; => [false]
 
+  ;; control flow
+  (eval 1 2 < (:then) (:else) if)
+  ;; => [:then]
+  (eval 0 1 2 < (inc) (dec) if)
+  ;; => [1]
+  (eval 0 1 2 > (inc) (dec) if)
+  ;; => [-1]
+
   ;; seq
   (eval [1 2 3] first)
   ;; => [1]
@@ -218,19 +248,36 @@
   (eval [1 2 3] 0 (+) reduce)
   ;; => [6]
 
-  ;; combinator
-  (eval 1 (inc) (inc) bi *)
-  ;; => [4]
-  (eval 1 2 3 (+ +) apply)
-  ;; => [6]
-  (eval 1 3 (inc) dip)
-  ;; => [2 3]
 
   ;; shuffle
   (eval 1 2 swap)
   ;; => [2 1]
-  (eval 1 dup)
-  ;; => [1 1]
+  (eval 1 2 dup)
+  ;; => [1 2 2]
+  (eval 1 2 rm)
+  ;; => [1]
+  (eval 1 2 nip)
+  ;; => [2]
+  (eval 1 2 over)
+  ;; => [1 2 1]
+  (eval 0 1 2 3 pick)
+  ;; => [0 1 2 3 1]
+
+
+  ;; combinator
+  (eval 1 (inc) (inc) bi)
+  ;; => [2 2]
+  (eval 1 2 3 (+ +) apply)
+  ;; => [6]
+  (eval 1 3 (inc) dip)
+  ;; => [2 3]
+  (eval
+   4
+   (2 +) doto
+   (2 *) doto
+   (2 /) doto)
+  ;; => [6 8 2 4]
+
 
   ;; fancy
   (eval (+) 2 conj [1 2 3] swap map)
