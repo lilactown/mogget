@@ -58,6 +58,7 @@
    '< (->sfn < :arity 2)
    '> (->sfn > :arity 2)
    '= (->sfn = :arity 2)
+   'even? (->sfn even?)
 
    ;; seqs
    'first (->sfn first)
@@ -74,6 +75,16 @@
                       first))
                 coll))
          :arity 2)
+   'filter (->fn
+            (fn [words coll form]
+              (filter (fn [x]
+                        (-> {:stack [x] :words words :mode :eval}
+                            (eval-list form)
+                            ;; TODO throw err if > 1 results on stack
+                            :stack
+                            first))
+                      coll))
+            :arity 2)
    'reduce (->fn (fn [words coll init f]
                    (reduce (fn [res x]
                              (-> {:stack [res x] :words words :mode :eval}
@@ -159,26 +170,40 @@
 (comment
   ;; arithemetic
   (eval 1 2 3 + +)
+  ;; => [5]
   (eval 2 1 -)
+  ;; => [1]
   (eval 1 inc)
+  ;; => [2]
 
   ;; testing
   (eval 1 1 =)
+  ;; => [true]
   (eval [1 2 3] [1 2 3] =)
+  ;; => [true]
   (eval 1 2 =)
+  ;; => [false]
 
   (eval 1 2 <)
+  ;; => [true]
   (eval 2 1 <)
+  ;; => [false]
 
   (eval 2 1 >)
+  ;; => [true]
   (eval 1 2 >)
+  ;; => [false]
 
   ;; seq
   (eval [1 2 3] first)
+  ;; => [1]
   (eval [1 2 3] second)
+  ;; => [2]
   (eval [1 2 3] 2 nth)
   (eval [1 2 3] 4 conj)
   (eval [1 2 3] (inc) map)
+  (eval [1 2 3] (2 +) map)
+  (eval [1 2 3] (even?) filter)
   (eval [1 2 3] 0 (+) reduce)
 
   ;; combinator
