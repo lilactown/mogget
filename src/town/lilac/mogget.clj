@@ -97,6 +97,15 @@
                (:stack)
                (first))])
         :arity 3 :results 2)
+   'dip (fn [{:keys [stack] :as ctx}]
+          (let [[stack form] (-pop stack)
+                [stack x] (-pop stack)]
+            (-> (assoc ctx :stack stack)
+                (eval-list form)
+                (update :stack conj x))))
+   'apply (fn [{:keys [stack] :as ctx}]
+            (let [[stack form] (-pop stack)]
+              (eval-list (assoc ctx :stack stack) form)))
 
    ;; shuffle
    'swap (->sfn (fn [x y] [y x]) :arity 2 :results 2)
@@ -174,6 +183,8 @@
 
   ;; combinator
   (eval 1 (inc) (inc) bi *)
+  (eval 1 2 3 (+ +) apply)
+  (eval 1 3 (inc) dip)
 
   ;; shuffle
   (eval 1 2 swap)
