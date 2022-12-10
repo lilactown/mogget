@@ -11,7 +11,6 @@
   [(pop stack) (peek stack)])
 
 (defn ->fn
-  "pure stack fn"
   [f & {:keys [arity results]
         :or {arity 1
              results 1}}]
@@ -35,6 +34,7 @@
 
 
 (defn ->sfn
+  "pure stack fn"
   [f & {:keys [arity results] :as args}]
   (->fn (fn [_words & args] (apply f args)) args))
 
@@ -60,21 +60,29 @@
    '= (->sfn = :arity 2)
 
    ;; seqs
-   'map (fn [{:keys [stack words] :as ctx}]
-          (let [[stack form] (-pop stack)
-                [stack coll] (-pop stack)]
-            (assoc
-             ctx
-             :stack
-             (conj
-              stack
-              (map (fn [x]
-                     (-> {:stack [x] :words words :mode :eval}
-                         (eval-list form)
-                         ;; TODO throw err if > 1 results on stack
-                         :stack
-                         first))
-                   coll)))))
+   'first (->sfn first)
+   'second (->sfn second)
+   'nth (->sfn nth :arity 2)
+   'conj (->sfn conj :arity 2)
+   'map (->fn
+         (fn [words coll form]
+           (map (fn [x]
+                  (-> {:stack [x] :words words :mode :eval}
+                      (eval-list form)
+                      ;; TODO throw err if > 1 results on stack
+                      :stack
+                      first))
+                coll))
+         :arity 2)
+   'reduce (->fn (fn [words coll init f]
+                   (reduce (fn [res x]
+                             (-> {:stack [res x] :words words :mode :eval}
+                                 (eval-list f)
+                                 :stack
+                                 ;; TODO throw if > 1 result
+                                 first))
+                           init
+                           coll)) :arity 3)
 
    ;; combinators
    'bi (->fn
@@ -145,8 +153,24 @@
   (eval 2 1 -)
   (eval 1 inc)
 
+  ;; testing
+  (eval 1 1 =)
+  (eval [1 2 3] [1 2 3] =)
+  (eval 1 2 =)
+
+  (eval 1 2 <)
+  (eval 2 1 <)
+
+  (eval 2 1 >)
+  (eval 1 2 >)
+
   ;; seq
+  (eval [1 2 3] first)
+  (eval [1 2 3] second)
+  (eval [1 2 3] 2 nth)
+  (eval [1 2 3] 4 conj)
   (eval [1 2 3] (inc) map)
+  (eval [1 2 3] 0 (+) reduce)
 
   ;; combinator
   (eval 1 (inc) (inc) bi *)
