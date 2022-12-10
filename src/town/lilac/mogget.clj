@@ -172,11 +172,11 @@
      {:stack [] :words default-words :mode :eval}
      '~form)))
 
-
+^:rct/test
 (comment
   ;; arithemetic
   (eval 1 2 3 + +)
-  ;; => [5]
+  ;; => [6]
   (eval 2 1 -)
   ;; => [1]
   (eval 1 inc)
@@ -206,27 +206,46 @@
   (eval [1 2 3] second)
   ;; => [2]
   (eval [1 2 3] 2 nth)
+  ;; => [3]
   (eval [1 2 3] 4 conj)
+  ;; => [[1 2 3 4]]
   (eval [1 2 3] (inc) map)
+  ;; => [(2 3 4)]
   (eval [1 2 3] (2 +) map)
+  ;; => [(3 4 5)]
   (eval [1 2 3] (even?) filter)
+  ;; => [(2)]
   (eval [1 2 3] 0 (+) reduce)
+  ;; => [6]
 
   ;; combinator
   (eval 1 (inc) (inc) bi *)
+  ;; => [4]
   (eval 1 2 3 (+ +) apply)
+  ;; => [6]
   (eval 1 3 (inc) dip)
+  ;; => [2 3]
 
   ;; shuffle
   (eval 1 2 swap)
+  ;; => [2 1]
   (eval 1 dup)
+  ;; => [1 1]
 
   ;; fancy
   (eval (+) 2 conj [1 2 3] swap map)
+  ;; => [(3 4 5)]
 
   ;; define
   (eval (sq (dup *)) define 2 sq)
+  ;; => [4]
   (eval (sq (dup *)) define [1 2 3] (sq) map)
+  ;; => [(1 4 9)]
   (eval (sq (dup *)) define
         3 (sq) (sq) bi)
+  ;; => [9 9]
   )
+
+
+(require '[com.mjdowney.rich-comment-tests :as rct])
+(rct/run-ns-tests! *ns*)

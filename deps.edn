@@ -1,1 +1,7 @@
-{:paths ["src"]}
+{:paths ["src"]
+ :aliases
+ {:dev
+  {:extra-deps
+   {io.github.matthewdowney/rich-comment-tests
+    #_{:git/tag "v0.0.2" :git/sha "7c673a3"}
+    {:local/root "../rich-comment-tests"}}}}}
