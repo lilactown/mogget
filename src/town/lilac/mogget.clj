@@ -124,14 +124,14 @@
 
    'define (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
-                   [stack quoted-sym] (-pop stack)
-                   sym (second quoted-sym)]
+                   sym (first form)
+                   expr (second form)]
                (assoc
                 ctx
                 :stack stack
                 :words (assoc words sym
                               (fn [ctx]
-                                (eval-list ctx form))))))})
+                                (eval-list ctx expr))))))})
 
 (defprotocol IEval
   (-eval [x stack]))
@@ -139,6 +139,12 @@
 (extend-protocol IEval
   Object
   (-eval [o ctx] (update ctx :stack conj o))
+
+  clojure.lang.PersistentList
+  (-eval [lst ctx]
+    (if (= 'quote (first lst))
+      (update ctx :stack conj (second lst))
+      (update ctx :stack conj lst)))
 
   clojure.lang.Symbol
   (-eval [sym {:keys [words mode] :as ctx}]
@@ -215,9 +221,12 @@
   (eval 1 2 swap)
   (eval 1 dup)
 
+  ;; fancy
+  (eval (+) 2 conj [1 2 3] swap map)
+
   ;; define
-  (eval 'sq (dup *) define 2 sq)
-  (eval 'sq (dup *) define [1 2 3] (sq) map)
-  (eval 'sq (dup *) define
+  (eval (sq (dup *)) define 2 sq)
+  (eval (sq (dup *)) define [1 2 3] (sq) map)
+  (eval (sq (dup *)) define
         3 (sq) (sq) bi)
   )
