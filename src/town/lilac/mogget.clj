@@ -54,11 +54,15 @@
    '- (->sfn - :arity 2)
    '* (->sfn * :arity 2)
    '/ (->sfn / :arity 2)
+   'max (->sfn max :arity 2)
+   'parse-long (->sfn parse-long)
 
    ;; tests
    '< (->sfn < :arity 2)
    '> (->sfn > :arity 2)
    '= (->sfn = :arity 2)
+   '<= (->sfn <= :arity 2)
+   '>= (->sfn >= :arity 2)
    'and (->sfn #(and %1 %2) :arity 2)
    'or (->sfn #(or %1 %2) :arity 2)
    'even? (->sfn even?)
@@ -93,6 +97,8 @@
    'second (->sfn second)
    'nth (->sfn nth :arity 2)
    'conj (->sfn conj :arity 2)
+   'into (->sfn into :arity 2)
+   'concat (->sfn concat :arity 2)
    'map (->fn
          (fn [words coll form]
            (map (fn [x]
@@ -100,7 +106,7 @@
                       (eval-list form)
                       ;; TODO throw err if > 1 results on stack
                       :stack
-                      first))
+                      peek))
                 coll))
          :arity 2)
    'filter (->fn
@@ -110,7 +116,7 @@
                             (eval-list form)
                             ;; TODO throw err if > 1 results on stack
                             :stack
-                            first))
+                            peek))
                       coll))
             :arity 2)
    'reduce (->fn (fn [words coll init f]
@@ -119,11 +125,18 @@
                                  (eval-list f)
                                  :stack
                                  ;; TODO throw if > 1 result
-                                 first))
+                                 peek))
                            init
                            coll))
                  :arity 3)
    'sort (->sfn sort)
+   'range (->sfn range :arity 2)
+   'split-with (->fn (fn [words coll f]
+                       (split-with
+                        #(-> {:stack [%] :words words :mode :eval}
+                             (eval-list f) :stack peek)
+                        coll))
+                     :arity 2)
 
    ;; combinators
    'bi (->fn
@@ -227,6 +240,10 @@
   ;; => [1]
   (eval 1 inc)
   ;; => [2]
+  (eval 1 2 max)
+  ;; => [2]
+  (eval "22" parse-long)
+  ;; => [22]
 
   ;; testing
   (eval 1 1 =)
@@ -301,6 +318,12 @@
   ;; => [3]
   (eval [1 2 3] 4 conj)
   ;; => [[1 2 3 4]]
+  (eval [1 2 3] [4 5 6] into)
+  ;; => [[1 2 3 4 5 6]]
+  (eval (1 2 3) (4 5 6) into)
+  ;; => [(6 5 4 1 2 3)]
+  (eval (1 2 3) (4 5 6) concat)
+  ;; => [(1 2 3 4 5 6)]
   (eval [1 2 3] (inc) map)
   ;; => [(2 3 4)]
   (eval [1 2 3] (2 +) map)
@@ -313,6 +336,10 @@
   ;; => [2 3 4]
   (eval [1 4 2 3] sort)
   ;; => [(1 2 3 4)]
+  (eval 0 4 range)
+  ;; => [(0 1 2 3)]
+  (eval [1 2 3 4 5] (3 <=) split-with)
+  ;; => [[(1 2 3) (4 5)]]
 
 
   ;; shuffle
@@ -364,3 +391,8 @@
 
 (require '[com.mjdowney.rich-comment-tests :as rct])
 (rct/run-ns-tests! *ns*)
+
+(comment
+  (eval "input/day1" file-lines
+        (parse-long) map
+        ))
