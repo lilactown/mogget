@@ -41,7 +41,7 @@
 (declare eval-list)
 
 (def default-words
-  {'. display
+  {'prn display
 
    ;; arithmetic
    'inc (->sfn inc)
