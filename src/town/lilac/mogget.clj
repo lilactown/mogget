@@ -161,7 +161,28 @@
                            #(-> {:stack [%] :words words :mode :eval}
                                 (eval-list f) :stack peek)
                            coll))
-                       :arity 2)
+                         :arity 2)
+
+
+   ;; assocs
+   'get (->sfn get :arity 2)
+   'get-in (->sfn get-in :arity 2)
+   'assoc (->sfn assoc :arity 3)
+   'dissoc (->sfn dissoc :arity 2)
+   'assoc-in (->sfn assoc-in :arity 3)
+   'merge (->sfn merge :arity 2)
+   'update (fn [{:keys [stack] :as ctx}]
+             (let [[stack f] (-pop stack)
+                   [stack k] (-pop stack)
+                   [stack m] (-pop stack)
+                   v (get m k)
+                   ctx (eval-list (assoc ctx :stack (conj stack v)) f)
+                   m (assoc m k (-> ctx :stack peek))]
+               (-> ctx
+                   (update :stack pop)
+                   (update :stack conj m))))
+   'zipmap (->sfn (fn [ks vs] (zipmap ks vs))
+                  :arity 2)
 
    ;; combinators
    'bi (->fn
@@ -376,6 +397,21 @@
   ;; => [(4 5)]
 
 
+  ;; assocs
+  (eval {:a 1} :a get)
+  ;; => [1]
+  (eval {:a 1} :b 2 assoc)
+  ;; => [{:a 1, :b 2}]
+  (eval {:a 1} :a (inc) update)
+  ;; => [{:a 2}]
+  (eval {:a 1} {:b 2} merge)
+  ;; => [{:a 1, :b 2}]
+  (eval {:a 1} [:b 2] conj)
+  ;; => [{:a 1, :b 2}]
+  (eval [:one :two] [1 2] zipmap)
+  ;; => [{:one 1, :two 2}]
+
+
   ;; shuffle
   (eval 1 2 swap)
   ;; => [2 1]
@@ -425,7 +461,6 @@
 ^:rct/test
 (comment
   ;; AoC 2022 day 1
-  (require 'edamame.core)
   (-> (slurp "example.mog")
       (eval-string)
       :stack)
