@@ -175,7 +175,8 @@
 
 (def prelude
   '((doto (over (apply) dip)) define
-    (each (map spread)) define))
+    (each (map spread)) define
+    (when (() if)) define))
 
 (defn eval-list
   [ctx list]
@@ -226,12 +227,14 @@
   ;; => [false]
 
   ;; control flow
-  (eval 1 2 < (:then) (:else) if)
-  ;; => [:then]
   (eval 0 1 2 < (inc) (dec) if)
   ;; => [1]
   (eval 0 1 2 > (inc) (dec) if)
   ;; => [-1]
+  (eval 0 1 2 < (inc) when)
+  ;; => [1]
+  (eval 0 1 2 > (inc) when)
+  ;; => [0]
 
   ;; seq
   (eval [1 2 3] first)
