@@ -251,6 +251,13 @@
                            (requiring-resolve sym)
                            (resolve sym))]
                    (apply f args))))
+   'clj-fn (->fn (fn [words form]
+                   (fn [& args]
+                     (-> {:stack (vec args) :words words :mode :eval}
+                         (eval-list form)
+                         ;; TODO throw err if > 1 results
+                         :stack
+                         peek))))
    'define (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
                    sym (first form)
@@ -495,6 +502,8 @@
   ;; => [6]
   (eval (clojure.string/includes? "foo bar baz" "bar") clj)
   ;; => [true]
+  (eval ([1 2 3]) (inc) clj-fn conj 'map conj clj)
+  ;; => [(2 3 4)]
 
   ;; define
   (eval (sq (dup *)) define 2 sq)
