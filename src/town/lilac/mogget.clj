@@ -4,10 +4,6 @@
    [clojure.string :as str]
    [edamame.core :as eda]))
 
-(defn display
-  [{:keys [stack] :as ctx}]
-  (prn (peek stack))
-  (assoc ctx :stack (pop stack)))
 
 ;; http://cninja.blogspot.com/2011/02/clojure-partition-at.html#comments
 (defn partition-with
@@ -67,8 +63,14 @@
 
 (def default-words
   {;; i/o
-   'prn display
+   'prn (fn display
+          [{:keys [stack] :as ctx}]
+          (prn (peek stack))
+          (assoc ctx :stack (pop stack)))
    'slurp (->sfn slurp)
+   'spit (->sfn (fn [contents file]
+                  (spit file contents)
+                  []) :arity 2 :results :none)
 
    ;; arithmetic
    'inc (->sfn inc)
@@ -220,9 +222,12 @@
             (-> (assoc ctx :stack stack)
                 (eval-list form)
                 (update :stack conj x))))
-   'apply (fn [{:keys [stack] :as ctx}]
-            (let [[stack form] (-pop stack)]
-              (eval-list (assoc ctx :stack stack) form)))
+   'call (fn [{:keys [stack] :as ctx}]
+           (let [[stack form] (-pop stack)]
+             (eval-list (assoc ctx :stack stack) form)))
+   'apply (->fn (fn [words args f]
+                  (:stack (eval-list {:stack args :words words :mode :eval} f)))
+                :arity 2 :results :many)
    'spread (->sfn (fn [seq] seq) :results :many)
 
    ;; shuffle
@@ -238,7 +243,14 @@
    'str (->sfn str :arity 2)
    'str/split (->sfn str/split :arity 2)
 
-
+   ;; interop & defining
+   'clj (fn [{:keys [stack] :as ctx}]
+           (let [[stack n] (-pop stack)
+                 [stack sym] (-pop stack)
+                 [stack args] (-popm n stack)
+                 f (resolve sym)
+                 result (apply f args)]
+             (assoc ctx :stack (conj stack result))))
    'define (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
                    sym (first form)
@@ -270,7 +282,7 @@
       (throw (ex-info "word not found" {:word sym})))))
 
 (def prelude
-  '((doto (over (apply) dip)) define
+  '((doto (over (call) dip)) define
     (each (map spread)) define
     (when (() if)) define))
 
@@ -286,6 +298,14 @@
 (defn eval-string
   ([s] (eval-string {:stack [] :words default-words :mode :eval} s))
   ([ctx s] (eval-list ctx (eda/parse-string-all s {:regex true}))))
+
+(defn eval-file
+  ([f] (eval-file {:stack [] :words default-words :mode :eval} f))
+  ([ctx f] (eval-string (slurp f))))
+
+(defn run-file!
+  [{:keys [file]}]
+  (-> file eval-file :stack prn))
 
 (defmacro eval
   [& form]
@@ -451,7 +471,7 @@
   ;; combinator
   (eval 1 (inc) (inc) bi)
   ;; => [2 2]
-  (eval 1 2 3 (+ +) apply)
+  (eval (1 2 3) (+ +) apply)
   ;; => [6]
   (eval 1 3 (inc) dip)
   ;; => [2 3]
@@ -468,6 +488,11 @@
   ;; fancy
   (eval (+) 2 conj [1 2 3] swap map)
   ;; => [(3 4 5)]
+
+
+  ;; clj
+  (eval 1 2 3 '+ 3 clj)
+  ;;(eval 0 1 (2 3 '+ 2) (call) )
 
   ;; define
   (eval (sq (dup *)) define 2 sq)
