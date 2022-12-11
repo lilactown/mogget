@@ -66,6 +66,9 @@
    'and (->sfn #(and %1 %2) :arity 2)
    'or (->sfn #(or %1 %2) :arity 2)
    'even? (->sfn even?)
+   'odd? (->sfn odd?)
+   'some? (->sfn some?)
+   'nil? (->sfn nil?)
 
    ;; control flow
    'if (fn [{:keys [stack] :as ctx}]
@@ -99,6 +102,7 @@
    'conj (->sfn conj :arity 2)
    'into (->sfn into :arity 2)
    'concat (->sfn concat :arity 2)
+   'reverse (->sfn reverse)
    'map (->fn
          (fn [words coll form]
            (map (fn [x]
@@ -137,6 +141,8 @@
                              (eval-list f) :stack peek)
                         coll))
                      :arity 2)
+   'take (->sfn (fn [coll n] (take n coll)) :arity 2)
+   'drop (->sfn (fn [coll n] (drop n coll)) :arity 2)
 
    ;; combinators
    'bi (->fn
@@ -340,6 +346,10 @@
   ;; => [(0 1 2 3)]
   (eval [1 2 3 4 5] (3 <=) split-with)
   ;; => [[(1 2 3) (4 5)]]
+  (eval [1 2 3 4 5] 3 take)
+  ;; => [(1 2 3)]
+  (eval [1 2 3 4 5] 3 drop)
+  ;; => [(4 5)]
 
 
   ;; shuffle
@@ -395,4 +405,10 @@
 (comment
   (eval "input/day1" file-lines
         (parse-long) map
-        ))
+        (some?) split-with
+        0 (+) reduce
+
+        ;; part 1
+        (0 (max) reduce)
+        (sort reverse 3 take 0 (+) reduce)
+        bi))
