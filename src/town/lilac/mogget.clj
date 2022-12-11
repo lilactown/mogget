@@ -41,7 +41,8 @@
 (declare eval-list)
 
 (def default-words
-  {'prn display
+  {;; i/o
+   'prn display
 
    ;; arithmetic
    'inc (->sfn inc)
@@ -67,6 +68,23 @@
                [stack cond] (-pop stack)]
            (-> (assoc ctx :stack stack)
                (eval-list (if cond then else)))))
+   'case (fn [{:keys [stack] :as ctx}]
+           (let [[stack table] (-pop stack)
+                 [stack v] (-pop stack)]
+             (-> (assoc ctx :stack stack)
+                 (eval-list (get table v)))))
+   '? (fn [{:keys [stack] :as ctx}]
+        (let [[stack table] (-pop stack)
+              ctx (assoc ctx :stack stack)]
+          (loop [table (partition-all 2 table)]
+            (if-let [cond (first table)]
+              (if (second cond) ; not a default
+                (let [ctx (eval-list ctx (first cond))]
+                  (if (-> ctx :stack peek) ; cond result success
+                    (eval-list (update ctx :stack pop) (second cond))
+                    (recur (rest table))))
+                (eval-list ctx (first cond)))
+              ctx))))
 
    ;; seqs
    'first (->sfn first)
@@ -235,6 +253,29 @@
   ;; => [1]
   (eval 0 1 2 > (inc) when)
   ;; => [0]
+  (eval 0 :foo {:foo (inc) :bar (dec)} case)
+  ;; => [1]
+  (eval 0 :bar {:foo (inc) :bar (dec)} case)
+  ;; => [-1]
+  (eval 0 :baz {:foo (inc) :bar (dec)} case)
+  ;; => [0]
+  (eval 0 1 2
+        ((<) (inc)
+         (>) (dec)) ?)
+  ;; => [1]
+  (eval 0 2 1
+        ((<) (inc)
+         (>) (dec)) ?)
+  ;; => [-1]
+  (eval 0 1 1
+        ((<) (inc)
+         (>) (dec)) ?)
+  ;; => [0 1 1]
+  (eval 0 1 1
+        ((<) (inc)
+         (>) (dec)
+         (+)) ?)
+  ;; => [0 2]
 
   ;; seq
   (eval [1 2 3] first)
