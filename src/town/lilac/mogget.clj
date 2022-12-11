@@ -126,6 +126,7 @@
    'apply (fn [{:keys [stack] :as ctx}]
             (let [[stack form] (-pop stack)]
               (eval-list (assoc ctx :stack stack) form)))
+   'spread (->sfn (fn [seq] seq) :results :many)
 
    ;; shuffle
    'swap (->sfn (fn [x y] [y x]) :arity 2 :results 2)
@@ -172,7 +173,8 @@
               (throw (ex-info "word not found" {:word sym}))))))
 
 (def prelude
-  '((doto (over (apply) dip)) define))
+  '((doto (over (apply) dip)) define
+    (each (map spread)) define))
 
 (defn eval-list
   [ctx list]
@@ -247,6 +249,8 @@
   ;; => [(2)]
   (eval [1 2 3] 0 (+) reduce)
   ;; => [6]
+  (eval [1 2 3] (inc) each)
+  ;; => [2 3 4]
 
 
   ;; shuffle
@@ -277,6 +281,8 @@
    (2 *) doto
    (2 /) doto)
   ;; => [6 8 2 4]
+  (eval [1 2 3] spread)
+  ;; => [1 2 3]
 
 
   ;; fancy
