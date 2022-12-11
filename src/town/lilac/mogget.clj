@@ -1,7 +1,8 @@
 (ns town.lilac.mogget
   (:refer-clojure :exclude [eval])
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [edamame.core :as eda]))
 
 (defn display
   [{:keys [stack] :as ctx}]
@@ -54,6 +55,7 @@
 (def default-words
   {;; i/o
    'prn display
+   'slurp (->sfn slurp)
 
    ;; arithmetic
    'inc (->sfn inc)
@@ -225,14 +227,9 @@
 
   clojure.lang.Symbol
   (-eval [sym {:keys [words mode] :as ctx}]
-    (cond
-      (= 'quote sym) (assoc ctx :mode :quote)
-      (= :quote mode) (-> ctx
-                          (update :stack conj sym)
-                          (assoc :mode :eval))
-      :else (if-let [f (get words sym)]
-              (f ctx)
-              (throw (ex-info "word not found" {:word sym}))))))
+    (if-let [f (get words sym)]
+      (f ctx)
+      (throw (ex-info "word not found" {:word sym})))))
 
 (def prelude
   '((doto (over (apply) dip)) define
@@ -240,12 +237,17 @@
     (when (() if)) define))
 
 (defn eval-list
-  [ctx list]
-  (reduce
+  ([list] (eval-list {:stack [] :words default-words :mode :eval} list))
+  ([ctx list]
+   (reduce
     (fn [ctx x]
       (-eval x ctx))
     ctx
-    (concat prelude list)))
+    (concat prelude list))))
+
+(defn eval-string
+  ([s] (eval-string {:stack [] :words default-words :mode :eval} s))
+  ([ctx s] (eval-list ctx (eda/parse-string-all s {:regex true}))))
 
 (defmacro eval
   [& form]
@@ -420,33 +422,13 @@
   ;; => [9 9]
   )
 
+^:rct/test
 (comment
   ;; AoC 2022 day 1
-  (eval
-   "1000
-2000
-3000
-
-4000
-
-5000
-6000
-
-7000
-8000
-9000
-
-10000"
-   #"\n" str/split
-   (parse-long) map
-   (nil?) partition-with
-   (0 (+) reduce) map
-
-   ;; part 1
-   (0 (max) reduce)
-   ;; part 2
-   (sort reverse 3 take 0 (+) reduce)
-   bi)
+  (require 'edamame.core)
+  (-> (slurp "example.mog")
+      (eval-string)
+      :stack)
   ;; => [24000 45000]
   )
 

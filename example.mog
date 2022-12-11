@@ -1,0 +1,26 @@
+"1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000"
+
+#"\n" str/split
+(parse-long) map
+(nil?) partition-with
+(0 (+) reduce) map
+
+;; part 1
+(0 (max) reduce)
+
+;; part 2
+(sort reverse 3 take 0 (+) reduce)
+bi
