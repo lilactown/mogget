@@ -103,6 +103,7 @@
                            init
                            coll))
                  :arity 3)
+   'sort (->sfn sort)
 
    ;; combinators
    'bi (->fn
@@ -251,6 +252,8 @@
   ;; => [6]
   (eval [1 2 3] (inc) each)
   ;; => [2 3 4]
+  (eval [1 4 2 3] sort)
+  ;; => [(1 2 3 4)]
 
 
   ;; shuffle
