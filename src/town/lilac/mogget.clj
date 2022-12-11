@@ -22,6 +22,19 @@
   [stack]
   [(pop stack) (peek stack)])
 
+(defn -popm
+  [n stack]
+  (loop [n n
+         xs []
+         stack stack]
+    (if (pos? n)
+      (if (seq stack)
+        (let [x (peek stack)
+              stack (pop stack)]
+          (recur (dec n) (conj xs x) stack))
+        (throw (ex-info "Stack empty" {:stack stack})))
+      [stack xs])))
+
 (defn ->fn
   [f & {:keys [arity results]
         :or {arity 1
@@ -116,6 +129,10 @@
    'into (->sfn into :arity 2)
    'concat (->sfn concat :arity 2)
    'reverse (->sfn reverse)
+   'collect (fn [{:keys [stack] :as ctx}]
+              (let [[stack n] (-pop stack)
+                    [stack xs] (-popm n stack)]
+                (assoc ctx :stack (conj stack xs))))
    'map (->fn
          (fn [words coll form]
            (map (fn [x]
@@ -375,6 +392,10 @@
   ;; => [(6 5 4 1 2 3)]
   (eval (1 2 3) (4 5 6) concat)
   ;; => [(1 2 3 4 5 6)]
+  (eval 1 2 3 4 5 6 4 collect)
+  ;; => [1 2 [6 5 4 3]]
+  (eval 1 2 3 4 4 collect)
+  ;; => [[4 3 2 1]]
   (eval [1 2 3] (inc) map)
   ;; => [(2 3 4)]
   (eval [1 2 3] (2 +) map)
