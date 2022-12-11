@@ -244,13 +244,13 @@
    'str/split (->sfn str/split :arity 2)
 
    ;; interop & defining
-   'clj (fn [{:keys [stack] :as ctx}]
-           (let [[stack n] (-pop stack)
-                 [stack sym] (-pop stack)
-                 [stack args] (-popm n stack)
-                 f (resolve sym)
-                 result (apply f args)]
-             (assoc ctx :stack (conj stack result))))
+   'clj (->sfn (fn [form]
+                 (let [sym (first form)
+                       args (rest form)
+                       f (if (namespace sym)
+                           (requiring-resolve sym)
+                           (resolve sym))]
+                   (apply f args))))
    'define (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
                    sym (first form)
@@ -491,8 +491,10 @@
 
 
   ;; clj
-  (eval 1 2 3 '+ 3 clj)
-  ;;(eval 0 1 (2 3 '+ 2) (call) )
+  (eval (+ 1 2 3) clj)
+  ;; => [6]
+  (eval (clojure.string/includes? "foo bar baz" "bar") clj)
+  ;; => [true]
 
   ;; define
   (eval (sq (dup *)) define 2 sq)
