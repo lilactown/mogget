@@ -59,6 +59,8 @@
    '< (->sfn < :arity 2)
    '> (->sfn > :arity 2)
    '= (->sfn = :arity 2)
+   'and (->sfn #(and %1 %2) :arity 2)
+   'or (->sfn #(or %1 %2) :arity 2)
    'even? (->sfn even?)
 
    ;; control flow
@@ -242,6 +244,19 @@
   (eval 2 1 >)
   ;; => [true]
   (eval 1 2 >)
+  ;; => [false]
+
+  (eval true true and)
+  ;; => [true]
+  (eval true false and)
+  ;; => [false]
+  (eval false false and)
+  ;; => [false]
+  (eval true true or)
+  ;; => [true]
+  (eval true false or)
+  ;; => [true]
+  (eval false false or)
   ;; => [false]
 
   ;; control flow
