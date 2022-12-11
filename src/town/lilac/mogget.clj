@@ -1,10 +1,21 @@
 (ns town.lilac.mogget
-  (:refer-clojure :exclude [eval]))
+  (:refer-clojure :exclude [eval])
+  (:require
+   [clojure.string :as str]))
 
 (defn display
   [{:keys [stack] :as ctx}]
   (prn (peek stack))
   (assoc ctx :stack (pop stack)))
+
+;; http://cninja.blogspot.com/2011/02/clojure-partition-at.html#comments
+(defn partition-with
+  "Like partition-by but will start a new run when f returns true"
+  [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [run (cons (first s) (take-while #(not (f %)) (rest s)))]
+       (cons run (partition-with f (drop (inc (count run)) s)))))))
 
 (defn -pop
   [stack]
@@ -143,6 +154,12 @@
                      :arity 2)
    'take (->sfn (fn [coll n] (take n coll)) :arity 2)
    'drop (->sfn (fn [coll n] (drop n coll)) :arity 2)
+   'partition-with (->fn (fn [words coll f]
+                          (partition-with
+                           #(-> {:stack [%] :words words :mode :eval}
+                                (eval-list f) :stack peek)
+                           coll))
+                       :arity 2)
 
    ;; combinators
    'bi (->fn
@@ -175,6 +192,11 @@
    'nip (->sfn (fn [x y] y) :arity 2 :results 1)
    'over (->sfn (fn [x y] [x y x]) :arity 2 :results 3)
    'pick (->sfn (fn [x y z] [x y z x]) :arity 3 :results 4)
+
+
+   ;; string
+   'str (->sfn str :arity 2)
+   'str/split (->sfn str/split :arity 2)
 
 
    'define (fn [{:keys [stack words] :as ctx}]
@@ -398,17 +420,36 @@
   ;; => [9 9]
   )
 
+(comment
+  ;; AoC 2022 day 1
+  (eval
+   "1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000"
+   #"\n" str/split
+   (parse-long) map
+   (nil?) partition-with
+   (0 (+) reduce) map
+
+   ;; part 1
+   (0 (max) reduce)
+   ;; part 2
+   (sort reverse 3 take 0 (+) reduce)
+   bi)
+  ;; => [24000 45000]
+  )
+
 
 (require '[com.mjdowney.rich-comment-tests :as rct])
 (rct/run-ns-tests! *ns*)
-
-(comment
-  (eval "input/day1" file-lines
-        (parse-long) map
-        (some?) split-with
-        0 (+) reduce
-
-        ;; part 1
-        (0 (max) reduce)
-        (sort reverse 3 take 0 (+) reduce)
-        bi))
