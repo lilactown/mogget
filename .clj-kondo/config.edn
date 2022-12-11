@@ -1,0 +1,6 @@
+{:config-in-call
+ {town.lilac.mogget/eval
+  {:linters {:unresolved-symbol {:level :off}
+             :invalid-arity {:level :off}
+             :private-call {:level :off}
+             :not-a-function {:level :off}}}} }
