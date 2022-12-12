@@ -131,7 +131,7 @@
    'into (->sfn into :arity 2)
    'concat (->sfn concat :arity 2)
    'reverse (->sfn reverse)
-   'collect (fn [{:keys [stack] :as ctx}]
+   'vector (fn [{:keys [stack] :as ctx}]
               (let [[stack n] (-pop stack)
                     [stack xs] (-popm n stack)]
                 (assoc ctx :stack (conj stack xs))))
@@ -258,7 +258,7 @@
                          ;; TODO throw err if > 1 results
                          :stack
                          peek))))
-   'define (fn [{:keys [stack words] :as ctx}]
+   'defn (fn [{:keys [stack words] :as ctx}]
              (let [[stack form] (-pop stack)
                    sym (first form)
                    expr (second form)]
@@ -289,9 +289,9 @@
       (throw (ex-info "word not found" {:word sym})))))
 
 (def prelude
-  '((doto (over (call) dip)) define
-    (each (map spread)) define
-    (when (() if)) define))
+  '((doto (over (call) dip)) defn
+    (each (map spread)) defn
+    (when (() if)) defn))
 
 (defn eval-list
   ([list] (eval-list {:stack [] :words default-words :mode :eval} list))
@@ -308,7 +308,7 @@
 
 (defn eval-file
   ([f] (eval-file {:stack [] :words default-words :mode :eval} f))
-  ([ctx f] (eval-string (slurp f))))
+  ([ctx f] (eval-string ctx (slurp f))))
 
 (defn run-file!
   [{:keys [file]}]
@@ -419,9 +419,9 @@
   ;; => [(6 5 4 1 2 3)]
   (eval (1 2 3) (4 5 6) concat)
   ;; => [(1 2 3 4 5 6)]
-  (eval 1 2 3 4 5 6 4 collect)
+  (eval 1 2 3 4 5 6 4 vector)
   ;; => [1 2 [6 5 4 3]]
-  (eval 1 2 3 4 4 collect)
+  (eval 1 2 3 4 4 vector)
   ;; => [[4 3 2 1]]
   (eval [1 2 3] (inc) map)
   ;; => [(2 3 4)]
@@ -502,15 +502,15 @@
   ;; => [6]
   (eval (clojure.string/includes? "foo bar baz" "bar") clj)
   ;; => [true]
-  (eval ([1 2 3]) (inc) clj-fn conj 'map conj clj)
+  (eval [1 2 3] (inc) clj-fn 'map 3 vector clj)
   ;; => [(2 3 4)]
 
   ;; define
-  (eval (sq (dup *)) define 2 sq)
+  (eval (sq (dup *)) defn 2 sq)
   ;; => [4]
-  (eval (sq (dup *)) define [1 2 3] (sq) map)
+  (eval (sq (dup *)) defn [1 2 3] (sq) map)
   ;; => [(1 4 9)]
-  (eval (sq (dup *)) define
+  (eval (sq (dup *)) defn
         3 (sq) (sq) bi)
   ;; => [9 9]
   )
