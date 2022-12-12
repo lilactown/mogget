@@ -4,5 +4,6 @@
  {:dev
   {:extra-deps
    {io.github.matthewdowney/rich-comment-tests
-    #_{:git/tag "v0.0.2" :git/sha "7c673a3"}
-    {:local/root "../rich-comment-tests"}}}}}
+    #_{:local/root "../rich-comment-tests"}
+    {:git/tag "v0.0.3" :git/sha "dc4e412"}}}
+  :run {:exec-fn town.lilac.mogget/run-file!}}}
