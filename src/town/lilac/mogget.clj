@@ -247,6 +247,11 @@
    'clj (->sfn (fn [form]
                  (let [sym (first form)
                        args (rest form)
+                       ;; TODO handle unqouting in eval
+                       sym (if (and (coll? sym) (= 'quote (first sym)))
+                             (second sym)
+                             sym)
+
                        f (if (namespace sym)
                            (requiring-resolve sym)
                            (resolve sym))]
@@ -279,6 +284,7 @@
   clojure.lang.PersistentList
   (-eval [lst ctx]
     (if (= 'quote (first lst))
+      ;; TODO do read-time processing (e.g. remove wrapping (quote))
       (update ctx :stack conj (second lst))
       (update ctx :stack conj lst)))
 
@@ -291,7 +297,9 @@
 (def prelude
   '((doto (over (call) dip)) defn
     (each (map spread)) defn
-    (when (() if)) defn))
+    (when (() if)) defn
+    (remove (clj-fn 'remove 3 vector clj)) defn))
+
 
 (defn eval-list
   ([list] (eval-list {:stack [] :words default-words :mode :eval} list))
@@ -443,6 +451,8 @@
   ;; => [(1 2 3)]
   (eval [1 2 3 4 5] 3 drop)
   ;; => [(4 5)]
+  (eval [1 2 3 4 5 6] (even?) remove)
+  ;; => [(1 3 5)]
 
 
   ;; assocs
