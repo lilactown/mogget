@@ -135,6 +135,11 @@
               (let [[stack n] (-pop stack)
                     [stack xs] (-popm n stack)]
                 (assoc ctx :stack (conj stack xs))))
+   'list (fn [{:keys [stack] :as ctx}]
+           (let [[stack n] (-pop stack)
+                 [stack xs] (-popm n stack)]
+             (assoc ctx :stack (conj stack (list* xs)))))
+
    'map (->fn
          (fn [words coll form]
            (map (fn [x]
